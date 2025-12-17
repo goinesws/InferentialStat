@@ -1,0 +1,44 @@
+---
+title: "Your Title Goes Here"
+subtitle: "Inferential Statistics 2025/2026"
+author: "Andrea and Rafaelle Richel Pearl"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document: 
+    toc: true
+    fig_height: 6
+    number_sections: true
+editor_options: 
+  markdown: 
+    wrap: 80
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section 1
+
+Some random text....
+
+## Subsections if needed.
+
+Another random text....
+
+
+# Section 2
+
+
+This is an example of r-chuch. You can instrt the R code, Knit-it and your report
+is compiled in pdf.
+
+```{r}
+x <- rnorm(1000)
+hist(x)
+```
+
+
+# Section 4
+
+# Conclusions
