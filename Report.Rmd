@@ -26,9 +26,63 @@ motivation about the problem and possibly pointers to the literature
 
 # Data
 Data description and exploration: describes where the data comes from and performs some quick exploratory analysis by means of graphs and summaries
+```{r}
+library(ggplot2)
+coffee_data <- read.csv("synthetic_coffee_health_10000.csv", sep = ",")
+summary(coffee_data)
+
+# hist for sleep hours
+ggplot(coffee_data, aes(x = Sleep_Hours)) +
+  geom_histogram(binwidth = 0.5, fill = "skyblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribution of Daily Sleep Hours", x = "Hours of Sleep", y = "Count")
+
+# boxplot of caffeine intake per gender
+ggplot(coffee_data, aes(x = Gender, y = Caffeine_mg, fill = Gender)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Caffeine Intake Distribution by Gender", y = "Caffeine (mg)")
+
+# barchart health issues
+ggplot(coffee_data, aes(x = Health_Issues, fill = Health_Issues)) +
+  geom_bar() +
+  scale_fill_brewer(palette = "Reds") +
+  theme_minimal() +
+  labs(title = "Frequency of Reported Health Issues", x = "Severity", y = "Number of Participants")
+
+```
+
+```{r}
+# age group histogram
+ggplot(coffee_data, aes(x = Age)) +
+  geom_bar(fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "Distribution of Age Groups", x = "Age Group", y = "Number of Participants")
+```
 
 # Statistical Methods
 statistical methods applied and the results obtained
+
+### Linear Regression
+```{r}
+model <- lm(Heart_Rate ~ Caffeine_mg + Sleep_Hours + BMI + Physical_Activity_Hours, data = coffee_data)
+
+summary(model)
+
+
+
+```
+
+Caffeine / day -> categorical variable (>400, <400)
+then count how many in each category
+
+t test on two subgroups and check if there is a difference in mean in heart Heart_Rate
+
+and then do linear regression to find out what variables affect Heart_Rate
+
+
+
+
 
 # Results
 Conclusions
