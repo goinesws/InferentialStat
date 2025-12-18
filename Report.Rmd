@@ -1,7 +1,7 @@
 ---
-title: "Your Title Goes Here"
+title: "Final Project Report: Analysis of Coffee Consumption and Health Metrics"
 subtitle: "Inferential Statistics 2025/2026"
-author: "Andrea and Rafaelle Richel Pearl"
+author: "Andrea Recchiuti and Rafaelle Richel Pearl"
 date: "`r Sys.Date()`"
 output: 
   pdf_document: 
@@ -18,27 +18,17 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Section 1
+# Abstract
+(say from 3-8 lines) describing the problem and what it has been done
 
-Some random text....
+# Introduction
+motivation about the problem and possibly pointers to the literature
 
-## Subsections if needed.
+# Data
+Data description and exploration: describes where the data comes from and performs some quick exploratory analysis by means of graphs and summaries
 
-Another random text....
+# Statistical Methods
+statistical methods applied and the results obtained
 
-
-# Section 2
-
-
-This is an example of r-chuch. You can instrt the R code, Knit-it and your report
-is compiled in pdf.
-
-```{r}
-x <- rnorm(1000)
-hist(x)
-```
-
-
-# Section 4
-
-# Conclusions
+# Results
+Conclusions
