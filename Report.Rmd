@@ -15,74 +15,257 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  echo = FALSE,      # Hides all code
+  message = FALSE,   # Hides all library messages
+  warning = FALSE    # Hides all warnings
+)
 ```
 
 # Abstract
-(say from 3-8 lines) describing the problem and what it has been done
+This report investigates the relationship between caffeine consumption, lifestyle habits, and cardiovascular health using a synthetic dataset of 10,000 records. We specifically test the physiological validity of the 400mg "safe" caffeine limit using a Welch Two-Sample t-test. Furthermore, we employ Multiple Linear Regression to determine the relative impact of caffeine, sleep, BMI, and smoking on resting heart rate. Our results indicate that exceeding 400mg of caffeine significantly increases heart rate, and that sleep hours act as a significant protective factor, whereas BMI and smoking did not show significant linear effects in this specific model.
 
 # Introduction
-motivation about the problem and possibly pointers to the literature
-
+1. coffee is widely used
+2. 400mg rule suggested by EFSA and FDA making 400mg th daily limit for adults
+3. see if this arbritrary threshold is proven by actual physiological datamention papers stating caffeine acting as stimulant on the nervous system which increases heart rate, and sleep deprivation leads to nervous system imbalance. this is done to show the possibility that caffeine is not very healthy when consumed too much.
+   
 # Data
-Data description and exploration: describes where the data comes from and performs some quick exploratory analysis by means of graphs and summaries
+The primary data source for this study is the "Global Coffee Health Dataset," a synthetic population of 10,000 records designed to simulate real-world correlations between lifestyle choices and health outcomes. The dataset comprises 16 variables, detailed as follows:
+
+1. ID (Integer): Unique identifier for each participant.
+2. Age (Integer): Age group of the participant (18-80 Years).
+3. Gender (Categorical): Gender (Male, Female, Other).
+4. Country (Categorical): Country of residence (20 Countries)
+5. Coffee_Intake (Float): Number of cups of coffee consumed daily.
+6. Caffeine_mg (Float): Estimated daily caffeine intake in milligrams (1 cup is 95mg).
+7. Sleep_Hours (Float): Average hours of sleep per night.
+8. Sleep_Quality (Categorical): Self-reported sleep quality (Poor, Fair, Good, Excellent).
+9. BMI (Float): Body Mass Index of the participant.
+10. Heart_Rate (Integer): Resting heart rate in beats per minute.
+11. Stress_Level (Categorical): Self-reported stress level (Low, Medium, High).
+12. Physical_Activity_Hours (Float): Average hours of physical activity per week.
+13. Health_Issues (Categorical): Self-reported health issues related to caffeine consumption (None, Mild, Moderate, Severe).
+14. Occupation (Categorical): Type of occupation (Office, Healthcare, Student, Service, Other).
+15. Smoking (Boolean): Whether the participant is a smoker (0 = No, 1 = Yes).
+16. Alcohol_Consumption (Boolean): Whether the participant consumes alcohol (0 = No, 1 = Yes).
+
+## Summary of the dataset
+Here is the summary of the dataset provided by the "summary()" function in R:
 ```{r}
-library(ggplot2)
 coffee_data <- read.csv("synthetic_coffee_health_10000.csv", sep = ",")
+# Convert Smoking from 0/1 to No/Yes
+coffee_data$Smoking <- factor(coffee_data$Smoking, 
+                              levels = c(0, 1), 
+                              labels = c("No", "Yes"))
+
+# Convert Alcohol_Consumption from 0/1 to No/Yes
+coffee_data$Alcohol_Consumption <- factor(coffee_data$Alcohol_Consumption, 
+                                          levels = c(0, 1), 
+                                          labels = c("No", "Yes"))
+
+numerical_cols <- names(coffee_data)[sapply(coffee_data, is.numeric)]
+
 summary(coffee_data)
 
-# hist for sleep hours
-ggplot(coffee_data, aes(x = Sleep_Hours)) +
-  geom_histogram(binwidth = 0.5, fill = "skyblue", color = "black") +
-  theme_minimal() +
-  labs(title = "Distribution of Daily Sleep Hours", x = "Hours of Sleep", y = "Count")
-
-# boxplot of caffeine intake per gender
-ggplot(coffee_data, aes(x = Gender, y = Caffeine_mg, fill = Gender)) +
-  geom_boxplot() +
-  theme_minimal() +
-  labs(title = "Caffeine Intake Distribution by Gender", y = "Caffeine (mg)")
-
-# barchart health issues
-ggplot(coffee_data, aes(x = Health_Issues, fill = Health_Issues)) +
-  geom_bar() +
-  scale_fill_brewer(palette = "Reds") +
-  theme_minimal() +
-  labs(title = "Frequency of Reported Health Issues", x = "Severity", y = "Number of Participants")
-
 ```
 
-```{r}
-# age group histogram
-ggplot(coffee_data, aes(x = Age)) +
-  geom_bar(fill = "lightblue") +
-  theme_minimal() +
-  labs(title = "Distribution of Age Groups", x = "Age Group", y = "Number of Participants")
+## Exploratory Data Analysis
+To assess the integrity of the data and verify the assumptions required for inferential testing, we conducted a systematic Exploratory Data Analysis (EDA).
+
+### Distribution of Numerical Variables
+
+Continuous variables were isolated from categorical descriptors to mitigate noise during visualization. Notably, binary variables (Smoking and Alcohol_Consumption) were refactored into factors to ensure correct statistical treatment. Data was transformed from a wide to a long format to generate a high-density faceted grid of histograms.
+
+We utilized "free scales" for the axes to prevent variables with smaller numerical ranges (e.g., BMI) from being visually suppressed by those with larger ranges (e.g., Caffeine Intake). This visual profiling allowed us to confirm the symmetry and skewness of the predictors, identify potential outliers, and ensure all ranges were physiologically plausible.
+
+```{r, echo = FALSE}
+# 2. Define the plotting function
+plot_numeric_distributions <- function(df, cols) {
+  library(ggplot2)
+  library(tidyr)
+  library(dplyr)
+  
+  # Reshape data from 'wide' to 'long' format
+  # This puts all values in one column and variable names in another
+  df_long <- df %>%
+    select(all_of(cols)) %>%
+    pivot_longer(everything(), names_to = "variable", values_to = "value")
+  
+  # Create the faceted plot
+  ggplot(df_long, aes(x = value, fill = variable)) +
+    # Histogram layer
+    geom_histogram(bins = 30, color = "white", alpha = 0.7) +
+    # Faceting creates the grid (3 columns, free scales for each axis)
+    facet_wrap(~variable, scales = "free", ncol = 3) +
+    # Use the Viridis color palette (matches your Python code)
+    scale_fill_viridis_d() + 
+    theme_minimal() +
+    theme(
+      strip.text = element_text(size = 12, face = "bold"), # Title formatting
+      legend.position = "none",                           # Remove redundant legend
+      panel.grid.minor = element_blank()
+    ) +
+    labs(
+      title = "Distribution of Numeric Variables",
+      x = "Value",
+      y = "Count"
+    )
+}
+
+# 3. Call the function
+plot_numeric_distributions(coffee_data, numerical_cols)
 ```
+Normality & Parametric Validity: Variables like Heart_Rate and Sleep_Hours follow a clear bell-shaped curve. This is a vital finding because it satisfies the "Normality Assumption" required for the T-test and Linear Regression you performed later.
+
+Caffeine Habits: The distribution of Caffeine_mg shows that while most people stay within the "Safe" range (centered around the mean of 238mg), there is a significant "right tail" of high-consumers. This visual spread justifies the need to split the data into "High" and "Safe" groups to see if that tail end has different health outcomes.
+
+Sample Consistency: The Age distribution shows a relatively uniform spread across the 18-80 range, ensuring that conclusions aren't biased toward just young or just elderly participants.
+
+### Categorical Variables Visualization
+
+Frequency distributions for categorical variables were evaluated using normalized horizontal bar charts. Calculating the percentage distribution of categories (e.g., Gender, Occupation, and Health Issues) ensures that our subsequent inferential models are based on a well-represented and balanced sample population.
+```{r, echo = FALSE, fig.align = "center", fig.width = 7, fig.height = 6}
+# Identify categorical columns
+# Equivalent to select_dtypes(include=['object', 'category'])
+categorical_cols <- names(coffee_data)[sapply(coffee_data, function(x) is.character(x) | is.factor(x))]
+
+# 2. Create the Plotting Function
+plot_categorical_distributions <- function(df, cols) {
+  library(ggplot2)
+  library(dplyr)
+  library(tidyr)
+  
+  # We calculate percentages manually to match your Python logic
+  df_long <- df %>%
+    select(all_of(cols)) %>%
+    pivot_longer(everything(), names_to = "variable", values_to = "category") %>%
+    group_by(variable, category) %>%
+    summarise(count = n(), .groups = "drop") %>%
+    group_by(variable) %>%
+    mutate(percentage = (count / sum(count)) * 100)
+
+  # Create horizontal bar charts
+  ggplot(df_long, aes(x = percentage, y = reorder(category, percentage), fill = category)) +
+    geom_col() +
+    # Create the grid (4 columns as in your Python 4x4 logic)
+    facet_wrap(~variable, scales = "free", ncol = 3) +
+    # Viridis palette
+    scale_fill_viridis_d(option = "viridis") +
+    theme_minimal() +
+    theme(
+      legend.position = "none",
+      strip.text = element_text(face = "bold", size = 11),
+      axis.text.y = element_text(size = 8),
+      panel.grid.major.y = element_blank()
+    ) +
+    labs(
+      title = "Categorical Variables Distribution (%)",
+      x = "Percentage %",
+      y = "Category"
+    )
+}
+
+# 3. Call the function
+plot_categorical_distributions(coffee_data, categorical_cols)
+```
+Group Imbalance: The most critical takeaway is the Caffeine_Group split. Since approximately 87% of people are in the "Safe" group and only 13% are in the "High" group, a standard T-test might be inaccurate, which suggests the use of the Welch T-test as it is specifically designed to handle groups of unequal sizes.
+Lifestyle Context: The Smoking and Alcohol_Consumption charts show that the majority of the population are non-smokers and non-drinkers.
+Diversity: With 20 countries and 5 occupations represented almost equally, we can conclude that the dataset is diverse.
 
 # Statistical Methods
-statistical methods applied and the results obtained
+We employ two main statistical methods to analyze the dataset:
 
-### Linear Regression
-```{r}
-model <- lm(Heart_Rate ~ Caffeine_mg + Sleep_Hours + BMI + Physical_Activity_Hours, data = coffee_data)
+## Hypothesis Testing (T-test)
+To evaluate the 400mg threshold, the population was partitioned into two cohorts: the "Safe" group ($\le 400$mg/day) and the "High" group ($> 400$mg/day). We performed a Welch Two-Sample t-test to compare mean resting heart rates between these groups.The Welch t-test was selected specifically for its robustness against unequal variances (heteroscedasticity) and unequal sample sizes. High caffeine intake is often associated with higher variance in physiological responses; thus, the Welch method provides a more reliable $p$-value than the standard Student's t-test by adjusting the degrees of freedom via the Satterthwaite equation:
+The test statistic $t$ is calculated using the Welch-Satterthwaite equation:
 
-summary(model)
+$$t = \frac{\bar{X}_1 - \bar{X}_2}{\sqrt{\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}}}$$
 
+Where:
 
+* $\bar{X}_1$ and $\bar{X}_2$ are the sample means of the two groups.
+* $s_1^2$ and $s_2^2$ are the sample variances.
+* $n_1$ and $n_2$ are the sample sizes.
 
-```
+Hypotheses:
 
-Caffeine / day -> categorical variable (>400, <400)
-then count how many in each category
+* $H_0: \mu_{High} = \mu_{Safe}$ (The mean heart rate is equal across both groups).
+* $H_1: \mu_{High} > \mu_{Safe}$ (The mean heart rate of the high-consumption group is significantly higher).
 
-t test on two subgroups and check if there is a difference in mean in heart Heart_Rate
+## Multiple Linear Regression
+To assess the simultaneous impact of multiple lifestyle factors, we employed Multiple Linear Regression (MLR). This allows us to isolate the effect of caffeine while controlling for potential confounders such as sleep, physical activity, and BMI. The model is defined by the following equation:
 
-and then do linear regression to find out what variables affect Heart_Rate
+The theoretical model for our Multiple Linear Regression is defined as:
 
+$$Y_{HR} = \beta_0 + \beta_1X_{Caffeine} + \beta_2X_{Sleep} + \beta_3X_{BMI} + \beta_4X_{Smoking} + \beta_5X_{Activity} + \epsilon$$
 
+Where:
 
+* $Y_{HR}$ is the dependent variable (Resting Heart Rate).
+* $\beta_0$ is the y-intercept (the value of $Y$ when all $X$ are zero).
+* $\beta_1, \dots, \beta_5$ are the partial regression coefficients for each predictor.
+* $\epsilon$ is the error term (residuals).
 
+Where $\beta_0$ represents the intercept, $\beta_{1 \dots 5}$ represent the partial regression coefficients for each predictor, and $\epsilon$ represents the error term. We assessed the significance of individual predictors using t-tests for each coefficient and evaluated the global model fit using the F-statistic and Adjusted $R^2$.
 
 # Results
-Conclusions
+
+We seperate the data into <=400mg and >400mg of caffeine intake and create a new column called Caffeine_Group to store this information.
+
+```{r}
+# 2. CREATE CATEGORICAL VARIABLE
+# We create a new column 'Caffeine_Group' based on the 400mg threshold.
+# ifelse(condition, value_if_true, value_if_false)
+coffee_data$Caffeine_Group <- ifelse(coffee_data$Caffeine_mg > 400, "High (>400mg)", "Safe (<400mg)")
+```
+
+This is how many people are in each group:
+```{r}
+# 3. COUNT CATEGORIES
+# This counts how many people fall into the 'High' vs 'Safe' groups.
+category_counts <- table(coffee_data$Caffeine_Group)
+print(category_counts)
+```
+
+Then we run our two sampe t test to compare the mean heart rates of the two groups: and this is the result of it
+```{r}
+# 4. TWO-SAMPLE T-TEST
+# We compare the mean 'Heart_Rate' of the two groups.
+# Formula notation: Outcome ~ Grouping_Variable
+t_test_results <- t.test(Heart_Rate ~ Caffeine_Group, data = coffee_data)
+
+# Print the results of the T-test
+print(t_test_results)
+```
+
+The results yield a p-value of 0.00093, which is significantly lower than the standard alpha level of 0.05. This allows us to reject the null hypothesis ($H_0$). We observe that the "High" consumption group has a mean heart rate of 71.48 bpm, while the "Safe" group averages 70.49 bpm. The 95% confidence interval [0.40, 1.57] indicates that exceeding the 400mg limit is associated with a consistent increase in resting heart rate.
+
+### Multivariate Predictors of Heart Rate
+To understand which lifestyle factors most influence heart rate, we ran a Multiple Linear Regression model.
+
+```{r}
+# 5. MULTIPLE LINEAR REGRESSION
+# We investigate which factors impact Heart_Rate. 
+# We include Caffeine, Sleep, BMI, Smoking, and Physical Activity.
+model <- lm(Heart_Rate ~ Caffeine_mg + Sleep_Hours + BMI + Smoking + Physical_Activity_Hours, 
+            data = coffee_data)
+
+# Show the detailed coefficients and significance levels
+summary(model)
+```
+The model is statistically significant ($p < 0.001$), identifying two primary drivers of heart rate:
+
+* Caffeine Intake ($p < 0.001$): Every milligram of caffeine increases the heart rate by approximately 0.0039 bpm. This confirms caffeine's role as a physiological stimulant.
+* Sleep Hours ($p = 0.011$): Sleep has a significant negative coefficient (-0.207), suggesting that for every additional hour of sleep, the heart rate decreases.
+
+Surprisingly, variables such as Smoking, BMI, and Physical Activity did not reach statistical significance in this specific model, suggesting their linear impact is secondary to the immediate effects of caffeine and sleep.
+
+
+# Conclusion
+
+Based on the statistical analysis of 10,000 individuals, we can draw three primary conclusions regarding the relationship between caffeine consumption and cardiovascular health:
+
+1. The 400mg Threshold is Valid: Our hypothesis testing confirms that consuming more than 400mg of caffeine per day leads to a statistically significant increase in resting heart rate. This provides empirical support for the guidelines issued by health organizations like the FDA.
+2. Sleep as a Modulator: The regression model highlights that sleep is a critical protective factor. While caffeine stimulates the heart, adequate sleep works to lower the resting heart rate, highlighting the importance of "sleep hygiene" for regular coffee drinkers.
+3. Statistical Significance vs. Practical Magnitude: While the results are highly significant, the low Adjusted $R^2$ (0.0038) indicates that lifestyle factors explain only a small fraction of the total variation in heart rate. This suggests that while caffeine and sleep matter, biological and genetic factors likely play a much larger role in determining an individual's baseline heart rate.

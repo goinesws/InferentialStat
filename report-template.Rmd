@@ -1,7 +1,7 @@
 ---
-title: "Your Title Goes Here"
+title: "Final Project Report: Analysis of Coffee Consumption and Health Metrics"
 subtitle: "Inferential Statistics 2025/2026"
-author: "Name and Surname"
+author: "Andrea Recchiuti and Rafaelle Richel Pearl"
 date: "`r Sys.Date()`"
 output: 
   pdf_document: 
@@ -18,27 +18,186 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Section 1
+# Abstract
+This report investigates the relationship between caffeine consumption, lifestyle habits, and cardiovascular health using a synthetic dataset of 10,000 records. We specifically test the physiological validity of the 400mg "safe" caffeine limit using a Welch Two-Sample t-test. Furthermore, we employ Multiple Linear Regression to determine the relative impact of caffeine, sleep, BMI, and smoking on resting heart rate. Our results indicate that exceeding 400mg of caffeine significantly increases heart rate, and that sleep hours act as a significant protective factor, whereas BMI and smoking did not show significant linear effects in this specific model.
 
-Some random text....
+# Introduction
+1. coffee is widely used
+2. 400mg rule suggested by EFSA and FDA making 400mg th daily limit for adults
+3. see if this arbritrary threshold is proven by actual physiological datamention papers stating caffeine acting as stimulant on the nervous system which increases heart rate, and sleep deprivation leads to nervous system imbalance. this is done to show the possibility that caffeine is not very healthy when consumed too much.
+   
+# Data
+Data description and exploration: describes where the data comes from and performs some quick exploratory analysis by means of graphs and summaries
 
-## Subsections if needed.
+The data used in this report is a synthetic dataset named "Global Coffee Health Dataset", which contains 10,000 records of individuals with various health and lifestyle metrics.
+The dataset consists of 16 columns, which are the following:
 
-Another random text....
+1. ID (Integer): Unique identifier for each participant.
+2. Age (Integer): Age group of the participant (18-80 Years).
+3. Gender (Categorical): Gender (Male, Female, Other).
+4. Country (Categorical): Country of residence (20 Countries)
+5. Coffee_Intake (Float): Number of cups of coffee consumed daily.
+6. Caffeine_mg (Float): Estimated daily caffeine intake in milligrams (1 cup is 95mg).
+7. Sleep_Hours (Float): Average hours of sleep per night.
+8. Sleep_Quality (Categorical): Self-reported sleep quality (Poor, Fair, Good, Excellent).
+9. BMI (Float): Body Mass Index of the participant.
+10. Heart_Rate (Integer): Resting heart rate in beats per minute.
+11. Stress_Level (Categorical): Self-reported stress level (Low, Medium, High).
+12. Physical_Activity_Hours (Float): Average hours of physical activity per week.
+13. Health_Issues (Categorical): Self-reported health issues related to caffeine consumption (None, Mild, Moderate, Severe).
+14. Occupation (Categorical): Type of occupation (Office, Healthcare, Student, Service, Other).
+15. Smoking (Boolean): Whether the participant is a smoker (0 = No, 1 = Yes).
+16. Alcohol_Consumption (Boolean): Whether the participant consumes alcohol (0 = No, 1 = Yes).
 
-
-# Section 2
-
-
-This is an example of r-chuch. You can instrt the R code, Knit-it and your report
-is compiled in pdf.
-
+## Summary of the dataset
 ```{r}
-x <- rnorm(1000)
-hist(x)
+coffee_data <- read.csv("synthetic_coffee_health_10000.csv", sep = ",")
+# Convert Smoking from 0/1 to No/Yes
+coffee_data$Smoking <- factor(coffee_data$Smoking, 
+                              levels = c(0, 1), 
+                              labels = c("No", "Yes"))
+
+# Convert Alcohol_Consumption from 0/1 to No/Yes
+coffee_data$Alcohol_Consumption <- factor(coffee_data$Alcohol_Consumption, 
+                                          levels = c(0, 1), 
+                                          labels = c("No", "Yes"))
+summary(coffee_data)
 ```
 
+## Exploratory Data Analysis
 
-# Section 4
+### Distribution of Numberical Variables
+```{r}
+# 1. Identify numerical columns
+# Equivalent to df.select_dtypes(include=['int64', 'float64']).columns
+numerical_cols <- names(coffee_data)[sapply(coffee_data, is.numeric)]
 
-# Conclusions
+# 2. Define the plotting function
+plot_numeric_distributions <- function(df, cols) {
+  library(ggplot2)
+  library(tidyr)
+  library(dplyr)
+  
+  # Reshape data from 'wide' to 'long' format
+  # This puts all values in one column and variable names in another
+  df_long <- df %>%
+    select(all_of(cols)) %>%
+    pivot_longer(everything(), names_to = "variable", values_to = "value")
+  
+  # Create the faceted plot
+  ggplot(df_long, aes(x = value, fill = variable)) +
+    # Histogram layer
+    geom_histogram(bins = 30, color = "white", alpha = 0.7) +
+    # Faceting creates the grid (3 columns, free scales for each axis)
+    facet_wrap(~variable, scales = "free", ncol = 3) +
+    # Use the Viridis color palette (matches your Python code)
+    scale_fill_viridis_d() + 
+    theme_minimal() +
+    theme(
+      strip.text = element_text(size = 12, face = "bold"), # Title formatting
+      legend.position = "none",                           # Remove redundant legend
+      panel.grid.minor = element_blank()
+    ) +
+    labs(
+      title = "Distribution of Numeric Variables",
+      x = "Value",
+      y = "Count"
+    )
+}
+
+# 3. Call the function
+plot_numeric_distributions(coffee_data, numerical_cols)
+```
+
+### Categorical Variables Visualization
+```{r}
+# 1. Identify categorical columns
+# Equivalent to select_dtypes(include=['object', 'category'])
+categorical_cols <- names(coffee_data)[sapply(coffee_data, function(x) is.character(x) | is.factor(x))]
+
+# 2. Create the Plotting Function
+plot_categorical_distributions <- function(df, cols) {
+  library(ggplot2)
+  library(dplyr)
+  library(tidyr)
+  
+  # We calculate percentages manually to match your Python logic
+  df_long <- df %>%
+    select(all_of(cols)) %>%
+    pivot_longer(everything(), names_to = "variable", values_to = "category") %>%
+    group_by(variable, category) %>%
+    summarise(count = n(), .groups = "drop") %>%
+    group_by(variable) %>%
+    mutate(percentage = (count / sum(count)) * 100)
+
+  # Create horizontal bar charts
+  ggplot(df_long, aes(x = percentage, y = reorder(category, percentage), fill = category)) +
+    geom_col() +
+    # Create the grid (4 columns as in your Python 4x4 logic)
+    facet_wrap(~variable, scales = "free", ncol = 4) +
+    # Viridis palette
+    scale_fill_viridis_d(option = "viridis") +
+    theme_minimal() +
+    theme(
+      legend.position = "none",
+      strip.text = element_text(face = "bold", size = 11),
+      axis.text.y = element_text(size = 8),
+      panel.grid.major.y = element_blank()
+    ) +
+    labs(
+      title = "Categorical Variables Distribution (%)",
+      x = "Percentage %",
+      y = "Category"
+    )
+}
+
+# 3. Call the function
+plot_categorical_distributions(coffee_data, categorical_cols)
+```
+
+# Statistical Methods
+We employ two main statistical methods to analyze the dataset:
+
+## Hypothesis Testing (T-test)
+We perform a Welch Two-Sample t-test to compare the mean resting heart rates between individuals consuming more than 400mg of caffeine daily and those consuming 400mg or less. This test is appropriate as it does not assume equal variances between the two groups.
+We arrive at the H0: "The mean heart rates of individuals consuming more than 400mg of caffeine daily is equal to those consuming 400mg or less."
+And the H1 is: "The mean heart rates of individuals consuming more than 400mg of caffeine daily is higher from those consuming 400mg or less."
+
+Welch Two-Sample t-test is chosen for this scenario due to its robustness and the fact that it does not assume equal variances between the two groups, as there is a possibility of the set that consumes >400mg of caffeine having a higher variance in heart rates due to potential health issues associated with high caffeine intake.
+
+## Multiple Linear Regression
+The second statistical method used is Multiple Linear Regression. This method allows us to assess the impact of multiple independent variables (caffeine intake, sleep hours, BMI, smoking status, and physical activity) on a single continuous dependent variable (resting heart rate). By including several predictors in the model, we can control for confounding factors and better isolate the effect of caffeine consumption on heart rate.
+
+```{r}
+# 2. CREATE CATEGORICAL VARIABLE
+# We create a new column 'Caffeine_Group' based on the 400mg threshold.
+# ifelse(condition, value_if_true, value_if_false)
+coffee_data$Caffeine_Group <- ifelse(coffee_data$Caffeine_mg > 400, "High (>400mg)", "Safe (<400mg)")
+
+print (head(coffee_data))
+
+# 3. COUNT CATEGORIES
+# This counts how many people fall into the 'High' vs 'Safe' groups.
+category_counts <- table(coffee_data$Caffeine_Group)
+print(category_counts)
+
+# 4. TWO-SAMPLE T-TEST
+# We compare the mean 'Heart_Rate' of the two groups.
+# Formula notation: Outcome ~ Grouping_Variable
+t_test_results <- t.test(Heart_Rate ~ Caffeine_Group, data = coffee_data)
+
+# Print the results of the T-test
+print(t_test_results)
+
+# 5. MULTIPLE LINEAR REGRESSION
+# We investigate which factors impact Heart_Rate. 
+# We include Caffeine, Sleep, BMI, Smoking, and Physical Activity.
+model <- lm(Heart_Rate ~ Caffeine_mg + Sleep_Hours + BMI + Smoking + Physical_Activity_Hours, 
+            data = coffee_data)
+
+# Show the detailed coefficients and significance levels
+summary(model)
+```
+
+# Results
+Conclusions

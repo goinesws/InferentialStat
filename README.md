@@ -14,3 +14,10 @@ https://www.kaggle.com/datasets/uom190346a/global-coffee-health-dataset
 first we do a welch t test to explore if the 400 mg threshold of caffeine influences heart rate (maybe do two sample, if result is better or paper too long cut one)
 then we do regression to see how the other covariables are related to caffeine consumption 
 
+Caffeine / day -> categorical variable (>400, <400)
+then count how many in each category
+
+t test on two subgroups and check if there is a difference in mean in heart Heart_Rate
+
+and then do linear regression to find out what variables affect Heart_Rate
+
